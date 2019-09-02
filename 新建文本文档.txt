@@ -1,0 +1,126 @@
+import matplotlib as mpl
+import numpy as np
+import matplotlib.pylab as plt
+from sklearn.svm import SVC
+mpl.rcParams['font.sans-serif']=[u'SimHei']
+mpl.rcParams['axes.unicode_minus']=False
+
+#第一题：软间隔线性SVM
+#data1.mat数据可视化
+import scipy.io as sio
+data1=sio.loadmat(r'D:\大三下\数据挖掘\第四次SVM平时作业\data1.mat')
+dt1=data1['X']
+dt1_label=data1['y']
+dt10=dt1[np.where(dt1_label==0),:]
+dt11=dt1[np.where(dt1_label==1),:]
+dt10=dt10[0,:,:]
+dt11=dt11[0,:,:]
+plt.scatter(dt10[:,0],dt10[:,1])
+plt.scatter(dt11[:,0],dt11[:,1])
+
+#输出模型的准确率
+cor=[]
+for k in range(1,31):
+    svclf = SVC(C=k,kernel='linear')  #选用线性核
+    svclf.fit(dt1, dt1_label)   #训练模型
+    preds = svclf.predict(dt1)  #预测
+    num = 0
+    for i in range(len(preds)):
+        if preds[i] == dt1_label[i]:
+           num += 1
+    cor.append(float(num) / len(preds))
+a=range(1,31)
+plt.plot(a,cor)
+
+#利用软间隔线性SVM对data1.mat数据集分类
+for k in [1,10,50,100,1000]:
+    svclf=SVC(C=k,kernel='linear')  #选用线性核
+    svclf.fit(dt1,dt1_label) #训练模型
+    w=svclf.coef_
+    w1=w[0,0]
+    w2=w[0,1]
+    b=svclf.intercept_
+    x1=range(0,10)
+    x2=(-w1*x1-b)/w2
+    plt.figure(figsize=(8,8))
+    plt.plot(x1,x2)
+    plt.legend(('C='+str(svclf.C),))
+    plt.scatter(dt10[:,0],dt10[:,1])
+    plt.scatter(dt11[:,0],dt11[:,1])
+    plt.axis([0,4.5,1,5.5])
+    
+#第二题：基于高斯核函数的非线性SVM
+#data2.mat数据可视化
+import scipy.io as sio
+data2=sio.loadmat(r'D:\大三下\数据挖掘\第四次SVM平时作业\data2.mat')
+dt2=data2['X']
+dt2_label=data2['y']
+dt20=dt2[np.where(dt2_label==0),:]
+dt21=dt2[np.where(dt2_label==1),:]
+dt20=dt20[0,:,:]
+dt21=dt21[0,:,:]
+plt.scatter(dt20[:,0],dt20[:,1])
+plt.scatter(dt21[:,0],dt21[:,1])
+
+#输出模型的准确率
+cor1=[]
+for k in range(1,150):
+    svclf = SVC(C=1,kernel='rbf',degree=3,gamma=k)  #选用线性核
+    svclf.fit(dt2, dt2_label)   #训练模型
+    preds = svclf.predict(dt2)  #预测
+    num = 0
+    for i in range(len(preds)):
+        if preds[i] == dt2_label[i]:
+           num += 1
+    cor1.append(float(num) / len(preds))
+b=range(1,150)
+plt.plot(b,cor1)   
+
+#data2.mat数据集进行分类
+svclf=SVC(C=1,kernel='rbf',degree=3,gamma=150)  
+svclf.fit(dt2,dt2_label) #训练模型
+a0=np.arange(0,1.01,0.01)
+a1=np.arange(0.3,1.01,0.01)
+x00,x01=np.meshgrid(a0,a1) #生成网格点坐标矩阵
+X= np.c_[x00.ravel(), x01.ravel()] #返回所有网格点坐标
+preds= svclf.predict(X).reshape(x00.shape)
+plt.contour(x00,x01,preds,cmap=plt.cm.summer )
+plt.scatter(dt20[:,0],dt20[:,1])
+plt.scatter(dt21[:,0],dt21[:,1])
+
+#data3.mat数据可视化
+import scipy.io as sio
+data3=sio.loadmat(r'D:\大三下\数据挖掘\第四次SVM平时作业\data3.mat')
+dt3=data3['X']
+dt3_label=data3['y']
+dt30=dt3[np.where(dt3_label==0),:]
+dt31=dt3[np.where(dt3_label==1),:]
+dt30=dt30[0,:,:]
+dt31=dt31[0,:,:]
+dt3_test=data3['Xval']
+dt3_test_label=data3['yval']
+plt.scatter(dt30[:,0],dt30[:,1])
+plt.scatter(dt31[:,0],dt31[:,1])
+
+#测试集上进行交叉验证
+from sklearn.model_selection import GridSearchCV
+C=[0.01,0.03,0.1,0.3,1,3,10,30]
+gamma=[0.01,0.03,0.1,0.3,1,3,10,30]
+params=dict(C=C,gamma=gamma)
+svclf=SVC(kernel='rbf',degree=3)
+grid=GridSearchCV(estimator=svclf,param_grid=params,cv=10,scoring="f1")
+grid.fit(dt3_test,dt3_test_label)
+print("模型评分",grid.best_score_)
+print("模型参数",grid.best_params_)
+
+#根据最好的C和gamma得到最优分类曲线
+svclf=SVC(C=3,kernel='rbf',degree=3,gamma=3)  
+svclf.fit(dt3,dt3_label) #训练模型
+a0=np.arange(-0.7,0.41,0.01)
+a1=np.arange(-0.8,0.71,0.01)
+x10,x11=np.meshgrid(a0,a1) #生成网格点坐标矩阵
+X1=np.c_[x10.ravel(), x11.ravel()] #返回所有网格点坐标
+preds= svclf.predict(X1).reshape(x10.shape)
+plt.contour(x10,x11,preds,cmap=plt.cm.summer )
+plt.scatter(dt30[:,0],dt30[:,1])
+plt.scatter(dt31[:,0],dt31[:,1])
