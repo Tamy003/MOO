@@ -1,0 +1,355 @@
+import matplotlib as mpl
+import numpy as np
+import matplotlib.pylab as plt
+mpl.rcParams['font.sans-serif']=[u'SimHei']
+mpl.rcParams['axes.unicode_minus']=False
+from sklearn.datasets.samples_generator import make_blobs
+from sklearn.datasets import make_moons,make_circles
+from sklearn.preprocessing import StandardScaler
+
+'''
+第一问
+'''
+def generateData(n):
+    np.random.seed(12046)
+    blobs = make_blobs(n_samples=n, centers = [[-2, -2], [2, 2]])
+    circles = make_circles(n_samples=n, factor=.4, noise=.05)
+    moons = make_moons(n_samples=n, noise=.05)
+    blocks = np.random.rand(n, 2) - 0.5
+    y = (blocks[:, 0] * blocks[:, 1] < 0) + 0
+    blocks = (blocks, y)
+    # 由于神经网络对数据的线性变换不稳定，因此将数据做归一化处理
+    scaler = StandardScaler()
+    blobs = (scaler.fit_transform(blobs[0]), blobs[1])
+    circles = (scaler.fit_transform(circles[0]), circles[1])
+    moons = (scaler.fit_transform(moons[0]), moons[1])
+    blocks = (scaler.fit_transform(blocks[0]), blocks[1])
+    return blobs,circles,moons,blocks
+blobs,circles,moons,blocks=generateData(1000)
+
+# 提取blobs数据集分类数据
+dt1=blobs[0]
+dt1_label=blobs[1]
+dt10=dt1[np.where(dt1_label==0),:]
+dt11=dt1[np.where(dt1_label==1),:]
+dt10=dt10[0,:,:]
+dt11=dt11[0,:,:]
+# 提取blobs数据集分类数据
+dt2=circles[0]
+dt2_label=circles[1]
+dt20=dt2[np.where(dt2_label==0),:]
+dt21=dt2[np.where(dt2_label==1),:]
+dt20=dt20[0,:,:]
+dt21=dt21[0,:,:]   
+# 提取moons数据集分类数据
+dt3=moons[0]
+dt3_label=moons[1]
+dt30=dt3[np.where(dt3_label==0),:]
+dt31=dt3[np.where(dt3_label==1),:]
+dt30=dt30[0,:,:]
+dt31=dt31[0,:,:]  
+# 提取blocks数据集分类数据
+dt4=blocks[0]
+dt4_label=blocks[1]
+dt40=dt4[np.where(dt4_label==0),:]
+dt41=dt4[np.where(dt4_label==1),:]
+dt40=dt40[0,:,:]
+dt41=dt41[0,:,:]  
+
+#创建新的figure
+fig = plt.figure()
+#必须通过add_subplot()创建一个或多个绘图
+#ax = fig.add_subplot(221)
+#绘制2x2两行两列共四个图，编号从1开始
+ax1 = fig.add_subplot(221)
+ax1.scatter(dt10[:,0],dt10[:,1],s=10,c='c')
+ax1.scatter(dt11[:,0],dt11[:,1],s=10,c='m')
+plt.title('blobs数据集')
+ax2 = fig.add_subplot(222)
+ax2.scatter(dt20[:,0],dt20[:,1],s=10,c='c')
+ax2.scatter(dt21[:,0],dt21[:,1],s=10,c='m')
+plt.title('circles数据集')
+ax3 = fig.add_subplot(223)
+ax3.scatter(dt30[:,0],dt30[:,1],s=10,c='c')
+ax3.scatter(dt31[:,0],dt31[:,1],s=10,c='m')
+plt.title('moons数据集')
+ax4 = fig.add_subplot(224)
+ax4.scatter(dt40[:,0],dt40[:,1],s=10,c='c') 
+ax4.scatter(dt41[:,0],dt41[:,1],s=10,c='m')
+plt.title('blocks数据集')
+#图片的显示
+plt.show()
+
+
+
+'''
+第二问
+'''
+import tensorflow as tf 
+import numpy as np 
+
+input=2
+output=2
+hidden_1=4 # 隐藏层1节点数量
+hidden_2=4 # 隐藏层2节点数量
+
+#输入占位
+X = tf.placeholder(tf.float32, shape = [None, input])
+Y = tf.placeholder(tf.float32, shape = [None, output])
+
+#初始化权值和阈值
+#stddev是正则化系数，也是正态分布的标准差
+W1 = tf.Variable(tf.random_normal ([input, hidden_1], stddev = 0.1))
+B1 = tf.Variable(tf.constant (0.1), [hidden_1])
+W2 = tf.Variable(tf.random_normal ([hidden_1, hidden_2], stddev = 0.1))
+B2 = tf.Variable(tf.constant (0.1), [hidden_2])
+W3 = tf.Variable(tf.random_normal ([hidden_2, output], stddev = 0.1))
+B3 = tf.Variable(tf.constant (0.1), [output])
+
+#构建图：前向传播
+hidden_output = tf.matmul(X, W1) + B1  # 输入层到隐藏层L1正向传播
+hidden_output = tf.nn.sigmoid(hidden_output)  # 激活函数，用于计算节点输出值
+hidden_output = tf.matmul(hidden_output, W2) + B2# 输入层到隐藏层L2正向传播
+hidden_output = tf.nn.sigmoid(hidden_output) # 激活函数，用于计算节点输出值
+final_output = tf.matmul(hidden_output, W3) + B3  # 隐藏层L2到输出层正向传播
+
+# 对输出层计算交叉熵损失
+loss = tf.reduce_mean(tf.nn.softmax_cross_entropy_with_logits(labels=Y, logits=final_output))
+# 梯度下降算法，这里使用了反向传播算法用于修改权重，减小损失
+opt = tf.train.GradientDescentOptimizer(0.05).minimize(loss)
+# 初始化变量
+init = tf.global_variables_initializer()
+# 计算准确率
+correct_prediction =tf.equal (tf.argmax (Y,axis=1), tf.argmax(final_output,axis=1))
+accuracy = tf.reduce_mean(tf.cast(correct_prediction, 'float'))
+
+# 定义一个转换函数
+def chg(A):
+    new=[]
+    for y in A:
+        if y==1:
+            new.append([0,1])
+        else:
+            new.append([1,0])
+    return np.array(new)
+
+sess = tf.Session () #创建会话来运行TensorFlow程序
+batch_size = 500  # 批量处理数量
+training_iterations = 4500 #迭代次数
+
+# 对4个数据集进行训练
+sess.run (init) #对sess初始化
+# blobs数据集
+label_1=chg(dt1_label) #用自定义的函数chg把标签变成二维
+loss_1=[] #损失值
+print ("数据集:blobs")
+for k in range (training_iterations) :
+    training_loss_1 = sess.run ([opt, loss], feed_dict = {X:dt1[:400,:], Y:label_1[:400,:]})
+      #training_loss[1]为模型损失
+    loss_1.append(training_loss_1[1])
+    if k % batch_size== 0 :
+        train_accuracy_1 = accuracy.eval (session=sess, feed_dict = {X:dt1[:400,:], Y:label_1[:400,:]})
+        print ("step: %d,loss: %f, training accuracy: %f " % (k, training_loss_1[1],train_accuracy_1))
+# 对模型进行预测,并将预测结果可视化
+   #返回第一个值是分类正确率；第二个是布尔变量，表示各样本预测是否正确
+pre_acc_1,pre_bool_1=sess.run([accuracy,correct_prediction],feed_dict ={X:dt1[400:,:], Y:label_1[400:,:]})
+# 输出分类正确率
+print("blobs数据集分类正确率为",pre_acc_1)
+
+#  circles数据集
+sess.run (init) #对sess初始化
+label_2=chg(dt2_label) #用自定义的函数chg把标签变成二维
+loss_2=[] #损失值
+print ("数据集:circles")
+for k in range (training_iterations) :
+    training_loss_2 = sess.run ([opt, loss], feed_dict = {X:dt2[:400,:], Y:label_2[:400,:]})
+      #training_loss[1]为模型损失
+    loss_2.append(training_loss_2[1])
+    if k % batch_size== 0 :
+        train_accuracy_2 = accuracy.eval (session=sess, feed_dict = {X:dt2[:400,:], Y:label_2[:400,:]})
+        print ("step: %d,loss: %f, training accuracy: %f " % (k, training_loss_2[1],train_accuracy_2))
+pre_acc_2,pre_bool_2=sess.run([accuracy,correct_prediction],feed_dict ={X:dt2[400:,:], Y:label_2[400:,:]})
+print("circles数据集分类正确率为",pre_acc_2)
+
+
+# moons数据集
+sess.run (init) #对sess初始化
+label_3=chg(dt3_label) #用自定义的函数chg把标签变成二维
+loss_3=[] #损失值
+print ("数据集:moons")
+for k in range (training_iterations) :
+    training_loss_3 = sess.run ([opt, loss], feed_dict = {X:dt3[:400,:], Y:label_3[:400,:]})
+      #training_loss[1]为模型损失
+    loss_3.append(training_loss_3[1])
+    if k % batch_size== 0 :
+        train_accuracy_3 = accuracy.eval (session=sess, feed_dict = {X:dt3[:400,:], Y:label_3[:400,:]})
+        print ("step: %d,loss: %f, training accuracy: %f " % (k, training_loss_3[1],train_accuracy_3))
+pre_acc_3,pre_bool_3=sess.run([accuracy,correct_prediction],feed_dict ={X:dt3[400:,:], Y:label_3[400:,:]})
+print("moons数据集分类正确率为",pre_acc_3)
+
+
+# blocks数据集
+sess.run (init) #对sess初始化
+label_4=chg(dt4_label) #用自定义的函数chg把标签变成二维
+loss_4=[] #损失值
+print ("数据集:blocks")
+for k in range (training_iterations) :
+    training_loss_4 = sess.run ([opt, loss], feed_dict = {X:dt4[:400,:], Y:label_4[:400,:]})
+      #training_loss[1]为模型损失
+    loss_4.append(training_loss_4[1])
+    if k % batch_size== 0 :
+        train_accuracy_4 = accuracy.eval (session=sess, feed_dict = {X:dt4[:400,:], Y:label_4[:400,:]})
+        print("step: %d,loss: %f, training accuracy: %f " % (k, training_loss_4[1],train_accuracy_4))
+pre_acc_4,pre_bool_4=sess.run([accuracy,correct_prediction],feed_dict ={X:dt4[400:,:], Y:label_4[400:,:]})
+print("blocks数据集分类正确率为",pre_acc_4)
+
+# 预测结果可视化
+# 对预测数据进行分类
+data1=dt1[400:,:]
+data1=np.c_[data1,pre_bool_1]
+data10=data1[np.where(dt1_label[400:]==0),:]
+data11=data1[np.where(dt1_label[400:]==1),:]
+data10=data10[0,:,:]
+data11=data11[0,:,:]
+data2=dt2[400:,:]
+data2=np.c_[data2,pre_bool_2]
+data20=data2[np.where(dt2_label[400:]==0),:]
+data21=data2[np.where(dt2_label[400:]==1),:]
+data20=data20[0,:,:]
+data21=data21[0,:,:]
+data3=dt3[400:,:]
+data3=np.c_[data3,pre_bool_3]
+data30=data3[np.where(dt3_label[400:]==0),:]
+data31=data3[np.where(dt3_label[400:]==1),:]
+data30=data30[0,:,:]
+data31=data31[0,:,:]
+data4=dt4[400:,:]
+data4=np.c_[data4,pre_bool_4]
+data40=data4[np.where(dt4_label[400:]==0),:]
+data41=data4[np.where(dt4_label[400:]==1),:]
+data40=data40[0,:,:]
+data41=data41[0,:,:]
+
+def col_1(data):
+    color=[]
+    for i in data[:,2]:
+        if i==True:
+            color.append('c') 
+        else:
+            color.append('r')
+    return color
+def col_2(data):
+    color=[]
+    for i in data[:,2]:
+        if i==True:
+            color.append('m') 
+        else:
+            color.append('r')
+    return color
+
+#创建新的figure
+fig = plt.figure()
+#绘制2x2两行两列共四个图，编号从1开始
+ax1 = fig.add_subplot(221)
+color10=col_1(data10)
+color11=col_2(data11)
+ax1.scatter(data10[:,0],data10[:,1],s=10,c=color10)
+ax1.scatter(data11[:,0],data11[:,1],s=10,c=color11)
+plt.title('blobs数据集预测分类结果')
+ax2 = fig.add_subplot(222)
+color20=col_1(data20)
+color21=col_2(data21)
+ax2.scatter(data20[:,0],data20[:,1],s=10,c=color20)
+ax2.scatter(data21[:,0],data21[:,1],s=10,c=color21)
+plt.title('circles数据集预测分类结果')
+ax3 = fig.add_subplot(223)
+color30=col_1(data30)
+color31=col_2(data31)
+ax3.scatter(data30[:,0],data30[:,1],s=10,c=color30)
+ax3.scatter(data31[:,0],data31[:,1],s=10,c=color31)
+plt.title('moons数据集预测分类结果')
+ax4 = fig.add_subplot(224)
+color40=col_1(data40)
+color41=col_2(data41)
+ax4.scatter(data40[:,0],data40[:,1],s=10,c=color40)
+ax4.scatter(data41[:,0],data41[:,1],s=10,c=color41)
+plt.title('blocks数据集预测分类结果')
+#图片的显示
+plt.show()
+
+
+'''
+第三问
+'''
+# 模型损失随着迭代次数的变化曲线
+plt.title('模型损失随着迭代次数的变化曲线') 
+plt.xlabel('迭代次数')
+plt.ylabel('模型损失')
+t=np.linspace(0,4500,4500)
+plt.plot(t,loss_1,'k',t,loss_2,'b',t,loss_3,'m',t,loss_4,'y') 
+plt.legend(['blobs','circles','moons','blocks']) 
+plt.show()      
+     
+
+        
+'''
+第四问
+'''               
+#对模型进行改进，以circles数据集为例
+#构建图：前向传播
+hidden_output = tf.matmul(X, W1) + B1  # 输入层到隐藏层L1正向传播
+hidden_output = tf.nn.relu(hidden_output)  # 激活函数，用于计算节点输出值
+hidden_output = tf.matmul(hidden_output, W2) + B2# 输入层到隐藏层L2正向传播
+hidden_output = tf.nn.relu(hidden_output) # 激活函数，用于计算节点输出值
+final_output = tf.matmul(hidden_output, W3) + B3  # 隐藏层L2到输出层正向传播
+
+# 对输出层计算交叉熵损失
+loss = tf.reduce_mean(tf.nn.softmax_cross_entropy_with_logits(labels=Y, logits=final_output))
+# 梯度下降算法，这里使用了反向传播算法用于修改权重，减小损失
+opt = tf.train.GradientDescentOptimizer(0.05).minimize(loss)
+# 初始化变量
+init = tf.global_variables_initializer()
+# 计算准确率
+correct_prediction =tf.equal (tf.argmax (Y,axis=1), tf.argmax(final_output,axis=1))
+accuracy = tf.reduce_mean(tf.cast(correct_prediction, 'float'))
+
+sess = tf.Session () #创建会话来运行TensorFlow程序
+sess.run (init) #对sess初始化
+# 对4个数据集进行训练
+batch_size = 500  # 批量处理数量
+training_iterations = 4500 #迭代次数
+
+#  circles数据集
+label_2=chg(dt2_label) #用自定义的函数chg把标签变成二维
+loss_2=[] #损失值
+print ("数据集:circles")
+for k in range (training_iterations) :
+    training_loss_2 = sess.run ([opt, loss], feed_dict = {X:dt2[:400,:], Y:label_2[:400,:]})
+      #training_loss[1]为模型损失
+    loss_2.append(training_loss_2[1])
+    if k % batch_size== 0 :
+        train_accuracy_2 = accuracy.eval (session=sess, feed_dict = {X:dt2[:400,:], Y:label_2[:400,:]})
+        print ("step: %d,loss: %f, training accuracy: %f " % (k, training_loss_2[1],train_accuracy_2))
+pre_acc_2,pre_bool_2=sess.run([accuracy,correct_prediction],feed_dict ={X:dt2[400:,:], Y:label_2[400:,:]})
+# 输出分类正确率
+print("circles数据集分类正确率为",pre_acc_2)
+
+# 预测结果可视化
+# 对预测数据进行分类
+data2=dt2[400:,:]
+data2=np.c_[data2,pre_bool_2]
+data20=data2[np.where(dt2_label[400:]==0),:]
+data21=data2[np.where(dt2_label[400:]==1),:]
+data20=data20[0,:,:]
+data21=data21[0,:,:]
+
+
+color20=col_1(data20)
+color21=col_2(data21)
+plt.scatter(data20[:,0],data20[:,1],s=10,c=color20)
+plt.scatter(data21[:,0],data21[:,1],s=10,c=color21)
+plt.title('circles数据集预测分类结果')
+
+#图片的显示
+plt.show()
+sess.close()             
